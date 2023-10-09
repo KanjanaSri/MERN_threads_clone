@@ -1,17 +1,29 @@
 import User from "../models/userModel.js";
+import Post from "../models/postModel.js";
 import bcrypt from "bcryptjs";
 import generateTokenAndSetCookie from "../utils/helpers/generateTokenAndSetCookie.js";
 import { v2 as cloudinary } from "cloudinary";
+import mongoose from "mongoose";
 
 const getUserProfile = async (req, res) => {
-  const { username } = req.params;
+  // query is either username or userId
+  const { query } = req.params;
 
   try {
-    const user = await User.findOne({ username })
-      .select("-password")
-      .select("-updatedAt");
+    let user;
+    // query is userID
+    if (mongoose.Types.ObjectId.isValid(query)) {
+      user = await User.findOne({ _id: query })
+        .select("-password")
+        .select("-updatedAt");
+    } else {
+      // query is username
+      user = await User.findOne({ username: query })
+        .select("-password")
+        .select("-updatedAt");
+    }
 
-    if (!user) return res.status(400).json({ error: "User not found" });
+    if (!user) return res.status(404).json({ error: "User not found" });
 
     res.status(200).json(user);
   } catch (error) {
@@ -115,18 +127,18 @@ const followUnFollowUser = async (req, res) => {
 
     if (isFollowing) {
       // Unfollow user
-      // remove the id from following array of the currentUser
-      await User.findByIdAndUpdate(req.user._id, { $pull: { following: id } });
       // remove the id from follower array of the userToModify
       await User.findByIdAndUpdate(id, { $pull: { followers: req.user._id } });
+      // remove the id from following array of the currentUser
+      await User.findByIdAndUpdate(req.user._id, { $pull: { following: id } });
 
       res.status(200).json({ message: "User unfollowed successfully" });
     } else {
       // Follow user
-      // add the id to following array of the currentUser
-      await User.findByIdAndUpdate(req.user._id, { $push: { following: id } });
       // add the id to follower array of the userToModify
       await User.findByIdAndUpdate(id, { $push: { followers: req.user._id } });
+      // add the id to following array of the currentUser
+      await User.findByIdAndUpdate(req.user._id, { $push: { following: id } });
 
       res.status(200).json({ message: "User followed successfully" });
     }
