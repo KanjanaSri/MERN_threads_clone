@@ -22,21 +22,25 @@ import { useState } from "react";
 import usePreviewImg from "../hooks/usePreviewImg";
 import { useRef } from "react";
 import { BsFillImageFill } from "react-icons/bs";
-import { useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import userAtom from "../atoms/userAtom";
 import useShowToast from "../hooks/useShowToast";
+import postsAtom from "../atoms/postsAtom";
+import { useParams } from "react-router-dom";
 
 const MAX_CHAR = 500;
 
 function CreatePost() {
-  const { isOpen, onOpen, onClose } = useDisclosure();
-  const [postText, setPostText] = useState("");
   const { handleImageChange, imgUrl, setImgUrl } = usePreviewImg();
-  const imageRef = useRef(null);
+  const { isOpen, onOpen, onClose } = useDisclosure();
   const [remainingChar, setRemainingChar] = useState(MAX_CHAR);
-  const user = useRecoilValue(userAtom);
-  const showToast = useShowToast();
   const [loading, setLoading] = useState(false);
+  const [postText, setPostText] = useState("");
+  const [posts, setPosts] = useRecoilState(postsAtom);
+  const imageRef = useRef(null);
+  const showToast = useShowToast();
+  const user = useRecoilValue(userAtom);
+  const { username } = useParams();
 
   const handleTextChange = (e) => {
     const inputText = e.target.value;
@@ -73,6 +77,11 @@ function CreatePost() {
       }
 
       showToast("Success", "Post created successfully", "success");
+
+      if (username === user.username) {
+        setPosts([data, ...posts]);
+      }
+
       onClose();
 
       setPostText("");
@@ -89,12 +98,12 @@ function CreatePost() {
       <Button
         position={"fixed"}
         bottom={10}
-        right={10}
-        leftIcon={<AddIcon />}
+        right={5}
         bg={useColorModeValue("gray.300", "gray.dark")}
         onClick={onOpen}
+        size={{ base: "md", sm: "md" }}
       >
-        Post
+        <AddIcon />
       </Button>
 
       <Modal isOpen={isOpen} onClose={onClose}>

@@ -1,20 +1,25 @@
 import { useEffect, useState } from "react";
 import UserHeader from "../components/UserHeader";
-import UserPost from "../components/UserPost";
+import Post from "../components/Post";
 import { useParams } from "react-router-dom";
-import useShowToast from "../hooks/useShowToast";
+import useShowToast from "../hooks/useShowToast.js";
 import { Flex, Spinner } from "@chakra-ui/react";
+import useGetUserProfile from "../hooks/useGetUserProfile.js";
+import { useRecoilState } from "recoil";
+import postsAtom from "../atoms/postsAtom";
 
 function UserPage() {
-  const [user, setUser] = useState(null);
+  const { user, loading } = useGetUserProfile();
   const { username } = useParams();
   const showToast = useShowToast();
-  const [loading, setLoading] = useState(true);
+  const [posts, setPosts] = useRecoilState(postsAtom);
+  const [fetchingPosts, setFetchingPosts] = useState(true);
 
   useEffect(() => {
-    const getUser = async () => {
+    const getPosts = async () => {
+      setFetchingPosts(true);
       try {
-        const res = await fetch(`/api/users/profile/${username}`);
+        const res = await fetch(`/api/posts/user/${username}`);
         const data = await res.json();
 
         if (data.error) {
@@ -22,16 +27,17 @@ function UserPage() {
           return;
         }
 
-        setUser(data);
+        setPosts(data);
       } catch (error) {
-        showToast("Error", error, "error");
+        showToast("Error", error.message, "error");
+        setPosts([]);
       } finally {
-        setLoading(false);
+        setFetchingPosts(false);
       }
     };
 
-    getUser();
-  }, [username, showToast]);
+    getPosts();
+  }, [username, showToast, setPosts]);
 
   if (!user && loading) {
     return (
@@ -46,29 +52,18 @@ function UserPage() {
   return (
     <>
       <UserHeader user={user} />
-      <UserPost
-        likes={121}
-        replies={64}
-        postImg="/post1.png"
-        postTitle="Creating Your Dream Space with Art of Interior Design."
-      />
-      <UserPost
-        likes={831}
-        replies={284}
-        postImg="/post2.png"
-        postTitle="Exploring the Endless Possibilities in the Interior Design Field."
-      />
-      <UserPost
-        likes={245}
-        replies={78}
-        postImg="/post3.png"
-        postTitle="Epic Volleyball Match!"
-      />
-      <UserPost
-        likes={73}
-        replies={24}
-        postTitle="A Journey Beyond the Clock."
-      />
+
+      {!fetchingPosts && posts.length === 0 && <h1>User has no posts</h1>}
+
+      {fetchingPosts && (
+        <Flex justifyContent={"center"}>
+          <Spinner size={"xl"} />
+        </Flex>
+      )}
+
+      {posts?.map((post) => (
+        <Post key={post?._id} post={post} postedBy={post?.postedBy} />
+      ))}
     </>
   );
 }
